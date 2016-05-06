@@ -5,13 +5,15 @@
 
 #include "linkedlist.h"
 
-typedef enum { UP, DOWN, LEFT, RIGHT } direction;
+typedef enum { UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3 } direction;
 
 typedef struct {
+  int chartype;
   int prev_posX, prev_posY; // Previous position of the snake's head
   int posX, posY;
   direction facing_direction;
-  int points;
+  uint16_t points;
+  uint16_t highscore;
   LinkedList *body_list;
 } Snake;
 
@@ -26,6 +28,16 @@ typedef struct {
   uint16_t points_value;
 } Apple;
 
+typedef struct {
+  int posX, posY;
+  int width, height;
+} Obstacle;
+
+typedef struct {
+  Apple apples[5];
+  Obstacle obstacles[5];
+} World;
+
 /** Declarations **/
 // Window handling
 WINDOW *create_win(int height, int width, int starty, int startx);
@@ -34,11 +46,13 @@ void destroy_win(WINDOW *local_win);
 // Snake handling
 void tick_snake(uint64_t delta, Snake *snake);
 void snake_append_body_part(Snake *snake);
+void snake_reset(Snake *snake);
 
 // World management
 void tick_world(uint64_t delta);
 
 int main() {
+  srand(time(NULL));
   WINDOW *root = initscr(); /* initialize the curses library */
 
   cbreak();             /* Line buffering disabled pass on everything to me*/
@@ -48,16 +62,7 @@ int main() {
   refresh();
 
   Snake snake;
-  snake.posX = COLS / 2;
-  snake.posY = LINES / 2;
-  snake.points = 0;
-  snake.body_list = linked_list_new();
-  snake.facing_direction = RIGHT;
-
-  // Add body parts to the snake
-  snake_append_body_part(&snake);
-  snake_append_body_part(&snake);
-  snake_append_body_part(&snake);
+  snake_reset(&snake);
 
   int ch;
   bool QUIT = false;
@@ -102,37 +107,16 @@ int main() {
         snake.facing_direction = DOWN;
       }
       break;
+    case 'a':
+      snake_append_body_part(&snake);
+      snake.points = snake.body_list->length;
+      break;
     case 'r':
       QUIT = true;
     }
 
-    // Collision detection
-    /*
-    move snake_head forward in the snake->facing_direction
-    if snake_head has hit apple {
-      add points
-      add snake_body_part to snake_body_list in snake_head:s old position
-      draw entire snake_body_list without moving
-    } else if snake_head has hit wall { DIE. }
-    else { // Render snake tail as normal
-      render the snake tail from front to back by moving (remove from old
-      position, adding at new) the last body_part in snake->body_list to the
-      snake_head:s old position
-    }
-     */
-
-    SnakeBodyPart *body_part =
-        (SnakeBodyPart *)linked_list_pop_last(snake.body_list);
-    mvdelch(body_part->posY, body_part->posX);
-    linked_list_add_front(snake.body_list, body_part);
-    body_part->posX = snake.prev_posX;
-    body_part->posY = snake.prev_posY;
-    mvaddch(body_part->posY, body_part->posX, body_part->chartype);
-
-    // Draw stuff
-    mvaddch(snake.posY, snake.posX, '>');
-
-    mvprintw(2, 5, "Score: %i", snake.points);
+    mvprintw(2, COLS / 16, "Score: %i", snake.points);
+    mvprintw(2, COLS - COLS / 8, "Highscore: %i", snake.highscore);
     refresh();
   }
 
@@ -146,11 +130,11 @@ void tick_snake(uint64_t delta, Snake *snake) {
       100; // Update interval in microseconds
   static uint64_t time_since_update = 0;
   time_since_update += delta;
-  if (time_since_update < update_interval) { // Only update after 500 ms
+  if (time_since_update < update_interval) { // Only update after 100 ms
     return;
   }
 
-  mvdelch(snake->posY, snake->posX); // Clear the old head charachter
+  mvaddch(snake->posY, snake->posX, ' '); // Clear the old head charachter
 
   // Save previous position coordinates, useful when rendering the body/tail.
   snake->prev_posY = snake->posY;
@@ -159,47 +143,98 @@ void tick_snake(uint64_t delta, Snake *snake) {
   switch (snake->facing_direction) {
   case UP:
     snake->posY--;
+    snake->chartype = '^';
     break;
   case DOWN:
     snake->posY++;
+    snake->chartype = 'v';
     break;
   case LEFT:
     snake->posX--;
+    snake->chartype = '<';
     break;
   case RIGHT:
     snake->posX++;
+    snake->chartype = '>';
     break;
   }
+
+  // Collision detection
+  /*
+  move snake_head forward in the snake->facing_direction
+  if snake_head has hit apple {
+    add points
+    add snake_body_part to snake_body_list in snake_head:s old position
+    draw entire snake_body_list without moving
+  } else if snake_head has hit wall { DIE. }
+  else { // Render snake tail as normal
+    render the snake tail from front to back by moving (remove from old
+    position, adding at new) the last body_part in snake->body_list to the
+    snake_head:s old position
+  }
+  */
+  if (snake->posX >= COLS - 1 || snake->posX <= -1) {
+    snake_reset(snake);
+    return;
+  } else if (snake->posY >= LINES - 1 || snake->posY <= -1) {
+    snake_reset(snake);
+    return;
+  }
+  // TODO: Check collision with the tail
+
+  // TODO: Change the chartype of the tail when going vertucal/horizontal
+
+  SnakeBodyPart *body_part =
+      (SnakeBodyPart *)linked_list_pop_last(snake->body_list);
+  mvaddch(body_part->posY, body_part->posX, ' '); // Clear the charachter
+  linked_list_add_front(snake->body_list, body_part);
+  body_part->posX = snake->prev_posX;
+  body_part->posY = snake->prev_posY;
+  mvaddch(body_part->posY, body_part->posX, body_part->chartype);
+
+  // Draw head
+  mvaddch(snake->posY, snake->posX, snake->chartype);
 }
 
 void snake_append_body_part(Snake *snake) {
   SnakeBodyPart *body_part = calloc(sizeof(SnakeBodyPart), 1);
-  body_part->chartype = '=';
-  body_part->posX = snake->posX;
-  body_part->posY = snake->posY;
-
-  switch (snake->facing_direction) {
-  case UP:
-    body_part->posY++;
-    break;
-  case DOWN:
-    body_part->posY--;
-    break;
-  case LEFT:
-    body_part->posX++;
-    break;
-  case RIGHT:
-    body_part->posX--;
-    break;
-  }
-
+  body_part->chartype = 'z';
+  body_part->posX = snake->prev_posX;
+  body_part->posY = snake->prev_posY;
   linked_list_add_front(snake->body_list, body_part);
+}
+
+void snake_reset(Snake *snake) {
+  snake->posX = COLS / 2;
+  snake->posY = LINES / 2;
+  snake->points = 0;
+  snake->facing_direction = rand() % 4;
+  if (snake->body_list == NULL) {
+    snake->body_list = linked_list_new();
+  }
+  // FIXME: Remove all the snakes body parts from the screen if there are any
+  // if (snake->body_list->length > 0) {
+  //   SnakeBodyPart *body_part =
+  //       (SnakeBodyPart *)linked_list_next(snake->body_list);
+  //   while (body_part != NULL) {
+  //     mvaddch(body_part->posY, body_part->posX, ' ');
+  //     body_part = (SnakeBodyPart *)linked_list_next(snake->body_list);
+  //   }
+  // }
+  // linked_list_dealloc(snake->body_list);
+  snake->body_list = linked_list_new();
+  snake_append_body_part(snake);
 }
 
 /** World management **/
 void tick_world(uint64_t delta) {
   static uint64_t tick_steps = 0;
   tick_steps += delta;
+
+  if (tick_steps == 500) {
+    // TODO: Spawn Apple at random location every half second untill there are
+    // four apple on screen.
+  }
 }
 
 /** Window handling **/

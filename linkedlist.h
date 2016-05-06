@@ -1,3 +1,4 @@
+#pragma once
 #include <stdint.h>
 /*
  * Single linked list implementation.
