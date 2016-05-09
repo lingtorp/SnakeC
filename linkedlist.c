@@ -9,7 +9,7 @@ LinkedList *linked_list_new() {
 void linked_list_dealloc(LinkedList *list) {
   Node *node;
   node = list->root_node;
-  for (uint32_t i = 0; i < list->length - 1; i++) {
+  for (uint32_t i = 0; i < list->length; i++) {
     Node *next_node = node->next_node;
     free(node->value);
     free(node);
@@ -29,6 +29,10 @@ void linked_list_add_front(LinkedList *list, void *value) {
 void linked_list_add_back(LinkedList *list, void *value) {
   Node *node;
   node = list->root_node;
+  if (node == NULL) { // If list is empty add from the front to get a root node
+    linked_list_add_front(list, value);
+    return;
+  }
   for (uint32_t i = 0; i < list->length - 1;
        i++) { // Go to the back of the list
     node = node->next_node;
@@ -63,6 +67,9 @@ void *linked_list_get_last(LinkedList *list) {
 }
 
 void *linked_list_pop_first(LinkedList *list) {
+  if (list->root_node == NULL) {
+    return NULL;
+  }
   Node *old_root = list->root_node;
   list->root_node = old_root->next_node;
   void *old_root_value = old_root->value;

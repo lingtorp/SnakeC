@@ -6,11 +6,13 @@
 
 typedef struct Node Node;
 
+// Holds a pointer to the data and the next Node.
 struct Node {
   void *value;
   Node *next_node;
 };
 
+// Makes up the internal datastructure of a LinkedList.
 typedef struct {
   Node *root_node;
   uint32_t length;

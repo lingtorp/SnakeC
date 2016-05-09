@@ -8,6 +8,13 @@
 typedef enum { UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3 } direction;
 
 typedef struct {
+  LinkedList *apples_list;
+  uint8_t max_apples;
+  LinkedList *obstacles_list;
+  uint8_t max_obstacles;
+} World;
+
+typedef struct {
   int chartype;
   int prev_posX, prev_posY; // Previous position of the snake's head
   int posX, posY;
@@ -15,6 +22,7 @@ typedef struct {
   uint16_t points;
   uint16_t highscore;
   LinkedList *body_list;
+  World *world;
 } Snake;
 
 typedef struct {
@@ -24,7 +32,6 @@ typedef struct {
 
 typedef struct {
   int chartype;
-  int posX, posY;
   uint16_t points_value;
 } Apple;
 
@@ -33,23 +40,24 @@ typedef struct {
   int width, height;
 } Obstacle;
 
-typedef struct {
-  Apple apples[5];
-  Obstacle obstacles[5];
-} World;
-
 /** Declarations **/
 // Window handling
 WINDOW *create_win(int height, int width, int starty, int startx);
 void destroy_win(WINDOW *local_win);
 
 // Snake handling
-void tick_snake(uint64_t delta, Snake *snake);
+void tick_snake(Snake *snake, uint64_t delta);
 void snake_append_body_part(Snake *snake);
+Snake *snake_new();
 void snake_reset(Snake *snake);
 
 // World management
-void tick_world(uint64_t delta);
+void tick_world(World *world, uint64_t delta);
+void world_reset(World *world);
+World *world_new();
+
+// Apple handling
+Apple *apple_new();
 
 int main() {
   srand(time(NULL));
@@ -61,8 +69,19 @@ int main() {
   nodelay(root, true);  /* Make getch non-blocking */
   refresh();
 
-  Snake snake;
-  snake_reset(&snake);
+  if (has_colors() == FALSE) {
+    endwin();
+    printf("Your terminal does not support color\n");
+    exit(1);
+  }
+  start_color(); /* Start color */
+  init_pair(1, COLOR_GREEN, COLOR_BLACK);
+  // attron(COLOR_PAIR(1));
+
+  World *world = world_new();
+  Snake *snake = snake_new();
+
+  // TODO: Add walls/obstacles to the World.
 
   int ch;
   bool QUIT = false;
@@ -79,8 +98,8 @@ int main() {
     delta = ((now.tv_sec * 1000) + (now.tv_usec / 1000)) -
             ((start.tv_sec * 1000) + (start.tv_usec / 1000));
     if (delta >= DELTA_INTERVAL) {
-      tick_world(delta);
-      tick_snake(delta, &snake);
+      tick_world(world, delta);
+      tick_snake(snake, delta);
       start = now;
     }
 
@@ -88,35 +107,35 @@ int main() {
     ch = getch();
     switch (ch) {
     case KEY_LEFT:
-      if (snake.facing_direction != RIGHT) {
-        snake.facing_direction = LEFT;
+      if (snake->facing_direction != RIGHT) {
+        snake->facing_direction = LEFT;
       }
       break;
     case KEY_RIGHT:
-      if (snake.facing_direction != LEFT) {
-        snake.facing_direction = RIGHT;
+      if (snake->facing_direction != LEFT) {
+        snake->facing_direction = RIGHT;
       }
       break;
     case KEY_UP:
-      if (snake.facing_direction != DOWN) {
-        snake.facing_direction = UP;
+      if (snake->facing_direction != DOWN) {
+        snake->facing_direction = UP;
       }
       break;
     case KEY_DOWN:
-      if (snake.facing_direction != UP) {
-        snake.facing_direction = DOWN;
+      if (snake->facing_direction != UP) {
+        snake->facing_direction = DOWN;
       }
       break;
     case 'a':
-      snake_append_body_part(&snake);
-      snake.points = snake.body_list->length;
+      snake_append_body_part(snake);
+      snake->points = snake->body_list->length;
       break;
     case 'r':
       QUIT = true;
     }
 
-    mvprintw(2, COLS / 16, "Score: %i", snake.points);
-    mvprintw(2, COLS - COLS / 8, "Highscore: %i", snake.highscore);
+    mvprintw(2, COLS / 16, "Score: %i", snake->points);
+    mvprintw(2, COLS - COLS / 8, "Highscore: %i", snake->highscore);
     refresh();
   }
 
@@ -125,7 +144,7 @@ int main() {
 }
 
 /** Snake management **/
-void tick_snake(uint64_t delta, Snake *snake) {
+void tick_snake(Snake *snake, uint64_t delta) {
   static const uint64_t update_interval =
       100; // Update interval in microseconds
   static uint64_t time_since_update = 0;
@@ -173,6 +192,7 @@ void tick_snake(uint64_t delta, Snake *snake) {
     snake_head:s old position
   }
   */
+  // Check collision with the walls first
   if (snake->posX >= COLS - 1 || snake->posX <= -1) {
     snake_reset(snake);
     return;
@@ -182,7 +202,9 @@ void tick_snake(uint64_t delta, Snake *snake) {
   }
   // TODO: Check collision with the tail
 
-  // TODO: Change the chartype of the tail when going vertucal/horizontal
+  // TODO: Check collision with all the world entites
+
+  // TODO: Change the chartype of the tail when going vertical/horizontal
 
   SnakeBodyPart *body_part =
       (SnakeBodyPart *)linked_list_pop_last(snake->body_list);
@@ -204,37 +226,65 @@ void snake_append_body_part(Snake *snake) {
   linked_list_add_front(snake->body_list, body_part);
 }
 
+Snake *snake_new() {
+  Snake *snake = calloc(sizeof(Snake), 1);
+  snake_reset(snake);
+  return snake;
+}
+
 void snake_reset(Snake *snake) {
   snake->posX = COLS / 2;
   snake->posY = LINES / 2;
   snake->points = 0;
   snake->facing_direction = rand() % 4;
-  if (snake->body_list == NULL) {
-    snake->body_list = linked_list_new();
+  if (snake->body_list != NULL) {
+    // Remove all the snakes body parts from the screen if there are any
+    if (snake->body_list->length > 0) {
+      uint32_t body_length = snake->body_list->length;
+      for (size_t i = 0; i < body_length; i++) {
+        SnakeBodyPart *body_part = linked_list_pop_last(snake->body_list);
+        mvaddch(body_part->posY, body_part->posX, ' ');
+      }
+    }
+    linked_list_dealloc(snake->body_list);
   }
-  // FIXME: Remove all the snakes body parts from the screen if there are any
-  // if (snake->body_list->length > 0) {
-  //   SnakeBodyPart *body_part =
-  //       (SnakeBodyPart *)linked_list_next(snake->body_list);
-  //   while (body_part != NULL) {
-  //     mvaddch(body_part->posY, body_part->posX, ' ');
-  //     body_part = (SnakeBodyPart *)linked_list_next(snake->body_list);
-  //   }
-  // }
-  // linked_list_dealloc(snake->body_list);
   snake->body_list = linked_list_new();
   snake_append_body_part(snake);
 }
 
 /** World management **/
-void tick_world(uint64_t delta) {
+void tick_world(World *world, uint64_t delta) {
   static uint64_t tick_steps = 0;
   tick_steps += delta;
 
   if (tick_steps == 500) {
-    // TODO: Spawn Apple at random location every half second untill there are
-    // four apple on screen.
+    // Spawn Apple at random location every half second
+    // untill there are world->max_apples apple on screen.
+    if (world->apples_list->length < world->max_apples) {
+      Apple *apple = apple_new();
+      int rand_y = rand() % LINES;
+      int rand_x = rand() % COLS;
+      mvaddch(rand_y, rand_x, apple->chartype);
+      linked_list_add_front(world->apples_list, apple);
+    }
   }
+}
+
+World *world_new() {
+  World *world = calloc(sizeof(World), 1);
+  world->apples_list = linked_list_new();
+  world->max_apples = 5;
+  world->obstacles_list = linked_list_new();
+  world->max_obstacles = 3;
+  return world;
+}
+
+/** Apple handling **/
+Apple *apple_new() {
+  Apple *apple = calloc(sizeof(Apple), 1);
+  apple->chartype = '@';
+  apple->points_value = 10;
+  return apple;
 }
 
 /** Window handling **/
