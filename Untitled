@@ -1,0 +1,9 @@
+# Hypotesprövning
+Vi vet tre metoder för att testa hypoteser.
+
+Typ 1-fel. Att förkasta H0 trots att H0 är sann.
+Typ 2-fel. Att inte förkasta H0 trots att H0 är falsk.
+
+Def: Styrkefuntkionen
+Ges av h(theta) = P(H0 förkastas | theta är det sanna parametervärdet)
+Om H0 theta = theta0, så h(theta0) <= alpha

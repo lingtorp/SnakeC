@@ -83,7 +83,7 @@ int main() {
   Snake *snake = snake_new();
 
   // Window border
-  create_win(LINES, COLS, 0, 0);
+  WINDOW *border = create_win(LINES, COLS, 0, 0);
 
   // TODO: Add walls/obstacles to the World.
 
@@ -144,6 +144,7 @@ int main() {
   }
 
   delwin(root);
+  delwin(border);
   endwin();
 }
 
