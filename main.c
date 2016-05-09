@@ -162,6 +162,8 @@ void tick_snake(Snake *snake, uint64_t delta) {
   // Save previous position coordinates, useful when rendering the body/tail.
   snake->prev_posY = snake->posY;
   snake->prev_posX = snake->posX;
+  // FIXME: Change moving speed depending on vertical/horizontal movement
+  // direction
   // Move snake in the facing direction
   switch (snake->facing_direction) {
   case UP:
@@ -192,7 +194,7 @@ void tick_snake(Snake *snake, uint64_t delta) {
   }
   // TODO: Check collision with the tail
 
-  // TODO: Check collision with all the world entites
+  // TODO: Check collision with all the obstacles
 
   // Check collsion with apples
   if (mvinch(snake->posY, snake->posX) == '@') {
@@ -204,7 +206,7 @@ void tick_snake(Snake *snake, uint64_t delta) {
 
   SnakeBodyPart *body_part =
       (SnakeBodyPart *)linked_list_pop_last(snake->body_list);
-  mvaddch(body_part->posY, body_part->posX, ' '); // Clear the charachter
+  mvaddch(body_part->posY, body_part->posX, ' '); // Clear the character
   linked_list_add_front(snake->body_list, body_part);
   body_part->posX = snake->prev_posX;
   body_part->posY = snake->prev_posY;
