@@ -67,7 +67,6 @@ int main() {
   keypad(stdscr, true); /* For keyboard arrows 	*/
   noecho();             /* Do not echo out input */
   nodelay(root, true);  /* Make getch non-blocking */
-  refresh();
 
   if (has_colors() == FALSE) {
     endwin();
@@ -77,9 +76,14 @@ int main() {
   start_color(); /* Start color */
   init_pair(1, COLOR_GREEN, COLOR_BLACK);
   // attron(COLOR_PAIR(1));
+  bkgdset(COLOR_PAIR(1));
+  refresh();
 
   World *world = world_new();
   Snake *snake = snake_new();
+
+  // Window border
+  create_win(LINES, COLS, 0, 0);
 
   // TODO: Add walls/obstacles to the World.
 
@@ -178,31 +182,23 @@ void tick_snake(Snake *snake, uint64_t delta) {
     break;
   }
 
-  // Collision detection
-  /*
-  move snake_head forward in the snake->facing_direction
-  if snake_head has hit apple {
-    add points
-    add snake_body_part to snake_body_list in snake_head:s old position
-    draw entire snake_body_list without moving
-  } else if snake_head has hit wall { DIE. }
-  else { // Render snake tail as normal
-    render the snake tail from front to back by moving (remove from old
-    position, adding at new) the last body_part in snake->body_list to the
-    snake_head:s old position
-  }
-  */
-  // Check collision with the walls first
-  if (snake->posX >= COLS - 1 || snake->posX <= -1) {
+  // Check collision with the screen bounds
+  if (snake->posX >= COLS - 2 || snake->posX <= 0) {
     snake_reset(snake);
     return;
-  } else if (snake->posY >= LINES - 1 || snake->posY <= -1) {
+  } else if (snake->posY >= LINES - 2 || snake->posY <= 0) {
     snake_reset(snake);
     return;
   }
   // TODO: Check collision with the tail
 
   // TODO: Check collision with all the world entites
+
+  // Check collsion with apples
+  if (mvinch(snake->posY, snake->posX) == '@') {
+    mvaddch(snake->posY, snake->posX, ' ');
+    snake_append_body_part(snake);
+  }
 
   // TODO: Change the chartype of the tail when going vertical/horizontal
 
@@ -257,16 +253,18 @@ void tick_world(World *world, uint64_t delta) {
   static uint64_t tick_steps = 0;
   tick_steps += delta;
 
-  if (tick_steps == 500) {
-    // Spawn Apple at random location every half second
+  // FIXME: Better approach might be a switch and fallthorugh it ...
+  if (tick_steps >= 3000) {
+    // Spawn Apple at random location every 3rd
     // untill there are world->max_apples apple on screen.
     if (world->apples_list->length < world->max_apples) {
       Apple *apple = apple_new();
-      int rand_y = rand() % LINES;
-      int rand_x = rand() % COLS;
+      int rand_y = rand() % LINES - 2;
+      int rand_x = rand() % COLS - 2;
       mvaddch(rand_y, rand_x, apple->chartype);
       linked_list_add_front(world->apples_list, apple);
     }
+    tick_steps = 0; // Reset when used
   }
 }
 
