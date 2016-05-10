@@ -74,10 +74,6 @@ int main() {
     exit(1);
   }
   start_color(); /* Start color */
-  init_pair(1, COLOR_GREEN, COLOR_BLACK);
-  // attron(COLOR_PAIR(1));
-  bkgdset(COLOR_PAIR(1));
-  refresh();
 
   World *world = world_new();
   Snake *snake = snake_new();
@@ -187,9 +183,17 @@ void tick_snake(Snake *snake, uint64_t delta) {
 
   // Check collision with the screen bounds
   if (snake->posX >= COLS - 2 || snake->posX <= 0) {
+    // Update highscore
+    if (snake->points > snake->highscore) {
+      snake->highscore = snake->points;
+    }
     snake_reset(snake);
     return;
   } else if (snake->posY >= LINES - 2 || snake->posY <= 0) {
+    // Update highscore
+    if (snake->points > snake->highscore) {
+      snake->highscore = snake->points;
+    }
     snake_reset(snake);
     return;
   }
@@ -199,7 +203,7 @@ void tick_snake(Snake *snake, uint64_t delta) {
 
   // Check collsion with apples
   if (mvinch(snake->posY, snake->posX) == '@') {
-    mvaddch(snake->posY, snake->posX, ' ');
+    snake->points += 10;
     snake_append_body_part(snake);
   }
 
@@ -262,8 +266,8 @@ void tick_world(World *world, uint64_t delta) {
     // untill there are world->max_apples apple on screen.
     if (world->apples_list->length < world->max_apples) {
       Apple *apple = apple_new();
-      int rand_y = rand() % LINES - 2;
-      int rand_x = rand() % COLS - 2;
+      int rand_y = (rand() % (LINES - 2)) + 1;
+      int rand_x = (rand() % (COLS - 4)) + 2;
       mvaddch(rand_y, rand_x, apple->chartype);
       linked_list_add_front(world->apples_list, apple);
     }
