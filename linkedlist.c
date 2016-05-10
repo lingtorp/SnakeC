@@ -2,7 +2,7 @@
 #include <stdlib.h> // calloc, free
 
 LinkedList *linked_list_new() {
-  LinkedList *list = calloc(sizeof(LinkedList), 1);
+  LinkedList *list = calloc(1, sizeof(LinkedList));
   return list;
 }
 
@@ -19,7 +19,7 @@ void linked_list_dealloc(LinkedList *list) {
 }
 
 void linked_list_add_front(LinkedList *list, void *value) {
-  Node *new_root = calloc(sizeof(Node), 1);
+  Node *new_root = calloc(1, sizeof(Node));
   new_root->value = value;
   new_root->next_node = list->root_node;
   list->root_node = new_root;
@@ -37,7 +37,7 @@ void linked_list_add_back(LinkedList *list, void *value) {
        i++) { // Go to the back of the list
     node = node->next_node;
   }
-  Node *new_node = calloc(sizeof(Node), 1);
+  Node *new_node = calloc(1, sizeof(Node));
   new_node->value = value;
   node->next_node = new_node;
   list->length++;

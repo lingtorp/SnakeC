@@ -211,7 +211,7 @@ void tick_snake(Snake *snake) {
 }
 
 void snake_append_body_part(Snake *snake) {
-  SnakeBodyPart *body_part = calloc(sizeof(SnakeBodyPart), 1);
+  SnakeBodyPart *body_part = calloc(1, sizeof(SnakeBodyPart));
   body_part->chartype = 'z';
   body_part->posX = snake->prev_posX;
   body_part->posY = snake->prev_posY;
@@ -219,7 +219,7 @@ void snake_append_body_part(Snake *snake) {
 }
 
 Snake *snake_new() {
-  Snake *snake = calloc(sizeof(Snake), 1);
+  Snake *snake = calloc(1, sizeof(Snake));
   snake_reset(snake);
   return snake;
 }
@@ -265,7 +265,7 @@ void tick_world(World *world, uint64_t delta) {
 }
 
 World *world_new() {
-  World *world = calloc(sizeof(World), 1);
+  World *world = calloc(1, sizeof(World));
   world->apples_list = linked_list_new();
   world->max_apples = 5;
   world->obstacles_list = linked_list_new();
@@ -275,7 +275,7 @@ World *world_new() {
 
 /** Apple handling **/
 Apple *apple_new() {
-  Apple *apple = calloc(sizeof(Apple), 1);
+  Apple *apple = calloc(1, sizeof(Apple));
   apple->chartype = '@';
   apple->points_value = 10;
   return apple;
