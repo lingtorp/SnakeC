@@ -132,7 +132,7 @@ int main() {
 
     mvprintw(2, COLS / 16, "Score: %i", snake->points);
     mvprintw(2, COLS - COLS / 8, "Highscore: %i", snake->highscore);
-    mvprintw(LINES - 2, COLS / 16, "Press Q to quite");
+    mvprintw(LINES - 2, COLS / 16, "Press Q to quit");
     refresh();
   }
 
