@@ -46,7 +46,7 @@ WINDOW *create_win(int height, int width, int starty, int startx);
 void destroy_win(WINDOW *local_win);
 
 // Snake handling
-void tick_snake(Snake *snake, uint64_t delta);
+void tick_snake(Snake *snake);
 void snake_append_body_part(Snake *snake);
 Snake *snake_new();
 void snake_reset(Snake *snake);
@@ -99,7 +99,7 @@ int main() {
             ((start.tv_sec * 1000) + (start.tv_usec / 1000));
     if (delta >= DELTA_INTERVAL) {
       tick_world(world, delta);
-      tick_snake(snake, delta);
+      tick_snake(snake);
       start = now;
     }
 
@@ -126,16 +126,13 @@ int main() {
         snake->facing_direction = DOWN;
       }
       break;
-    case 'a':
-      snake_append_body_part(snake);
-      snake->points = snake->body_list->length;
-      break;
-    case 'r':
+    case 'q':
       QUIT = true;
     }
 
     mvprintw(2, COLS / 16, "Score: %i", snake->points);
     mvprintw(2, COLS - COLS / 8, "Highscore: %i", snake->highscore);
+    mvprintw(LINES - 2, COLS / 16, "Press Q to quite");
     refresh();
   }
 
@@ -145,15 +142,7 @@ int main() {
 }
 
 /** Snake management **/
-void tick_snake(Snake *snake, uint64_t delta) {
-  static const uint64_t update_interval =
-      100; // Update interval in microseconds
-  static uint64_t time_since_update = 0;
-  time_since_update += delta;
-  if (time_since_update < update_interval) { // Only update after 100 ms
-    return;
-  }
-
+void tick_snake(Snake *snake) {
   mvaddch(snake->posY, snake->posX, ' '); // Clear the old head charachter
 
   // Save previous position coordinates, useful when rendering the body/tail.
