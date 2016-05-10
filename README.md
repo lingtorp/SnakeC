@@ -1,6 +1,6 @@
 # SnakeC
 The classic game of Snake in a terminal, written in C with ncurses.
-[](screenshots/gameplay-snake.gif])
+[](screenshots/gameplay-snake.gif)
 
 This game is in series of game in which I try to reimplement classical games in
 the terminal using nothing but straight C and ncurses.
